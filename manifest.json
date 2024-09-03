@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Letterboxd Review Translator",
+  "version": "1.0",
+  "description": "Translate Letterboxd Reviews that not in your native language",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "scripts": [
+      "src/background.js"
+    ]
+  },
+  "action": {
+    "default_popup": "/src/popup.html",
+    "default_icon": {
+      "16": "src/icons/icon.png",
+      "48": "src/icons/icon.png",
+      "128": "src/icons/icon.png"
+    }
+  },
+  "options_ui": {
+    "page": "/src/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+        "src/content-loader.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/content.js",
+        "src/l-d/*.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "reviewtranslatorletterboxd@jashior.com",
+      "strict_min_version": "58.0"
+    }
+  }
+}
