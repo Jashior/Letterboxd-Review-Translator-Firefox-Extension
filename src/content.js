@@ -199,9 +199,9 @@ async function processReview(reviewElement) {
   try {
     const response = eld.detect(reviewText);
     if (response.language !== userMainLanguage) {
-      console.log(
-        `${response.language}: ${response.getScores()[response.language]}`
-      );
+      // console.log(
+      //   `${response.language}: ${response.getScores()[response.language]}`
+      // );
       if (response.getScores()[response.language] > 0.35) {
         addTranslateButton(reviewElement, reviewText, response.language);
       }

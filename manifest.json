@@ -1,10 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Letterboxd Review Translator",
-  "version": "1.0",
+  "version": "1.11",
   "description": "Translate Letterboxd Reviews that not in your native language",
   "permissions": [
     "storage"
+  ],
+  "host_permissions": [
+    "https://api-free.deepl.com/*",
+    "*://*.letterboxd.com/*"
   ],
   "background": {
     "scripts": [
@@ -26,7 +30,7 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*/*"
+        "*://*.letterboxd.com/*"
       ],
       "js": [
         "src/content-loader.js"
@@ -40,7 +44,7 @@
         "src/l-d/*.js"
       ],
       "matches": [
-        "<all_urls>"
+        "*://*.letterboxd.com/*"
       ]
     }
   ],
