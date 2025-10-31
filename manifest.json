@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Letterboxd Review Translator",
-  "version": "1.12",
+  "version": "1.13",
   "description": "Translate Letterboxd Reviews that not in your native language",
   "permissions": [
     "storage",

@@ -61,7 +61,19 @@ let langSubset = [
 export default function () {
   initializeUserSettings(() => {
     processReviews();
+    processComments();
   });
+}
+
+function startTranslatingAnimation(element) {
+  let dots = '.';
+  element.textContent = 'Translating' + dots;
+  const intervalId = setInterval(() => {
+    dots = dots.length < 3 ? dots + '.' : '.';
+    element.textContent = 'Translating' + dots;
+  }, 300);
+
+  return () => clearInterval(intervalId);
 }
 
 function initializeUserSettings(callback) {
@@ -138,18 +150,18 @@ async function translateText(text, sourceLang, targetLang) {
   }
 }
 
-function addTranslateButton(reviewElement, reviewText, sourceLang) {
-  let contentContainer = reviewElement.querySelector('.js-review');
-
-  if (!contentContainer) {
-    return;
-  }
-  let translateButton = contentContainer.querySelector('.translate-button');
+function createAndAttachTranslateButton(
+  container,
+  textToTranslate,
+  sourceLang,
+  buttonText
+) {
+  let translateButton = container.querySelector('.translate-button');
 
   if (!translateButton) {
     translateButton = document.createElement('span');
     translateButton.className = 'translate-button';
-    translateButton.textContent = 'Translate review';
+    translateButton.textContent = buttonText;
 
     // Low-key styling similar to Twitter's translate link
     translateButton.style.marginTop = '8px';
@@ -174,18 +186,26 @@ function addTranslateButton(reviewElement, reviewText, sourceLang) {
     });
 
     translateButton.addEventListener('click', async () => {
+      // Remove any existing error messages before attempting translation
+      const existingError = container.querySelector('.translation-error');
+      if (existingError) {
+        existingError.remove();
+      }
+
+      let stopAnimation;
       try {
         // Show loading state
-        translateButton.textContent = 'Translating...';
+        stopAnimation = startTranslatingAnimation(translateButton);
         translateButton.style.cursor = 'default';
         translateButton.style.color = '#999999';
 
         // Message background script for translation
         const translatedText = await translateText(
-          reviewText,
+          textToTranslate,
           sourceLang,
           userMainLanguage
         );
+        stopAnimation();
 
         // Create a new element to display the translated text
         const translatedElement = document.createElement('div');
@@ -200,40 +220,99 @@ function addTranslateButton(reviewElement, reviewText, sourceLang) {
         translatedElement.style.marginLeft = '8px';
         translatedElement.style.opacity = '0.95';
 
-        contentContainer.appendChild(translatedElement);
+        container.appendChild(translatedElement);
 
         // Hide the translate button after translation
         translateButton.style.display = 'none';
       } catch (error) {
+        if (stopAnimation) stopAnimation();
         console.error('Error during translation:', error);
         const errorElement = document.createElement('div');
+        errorElement.className = 'translation-error'; // Add class for easy removal
         errorElement.textContent = `Failed to translate: ${error.message}`;
         errorElement.style.marginTop = '8px';
         errorElement.style.color = '#CC6666';
         errorElement.style.fontSize = '0.85rem';
-        contentContainer.appendChild(errorElement);
+        container.appendChild(errorElement);
 
         // Reset button state
-        translateButton.textContent = 'Translate review';
+        translateButton.textContent = buttonText;
         translateButton.style.cursor = 'pointer';
         translateButton.style.color = '#6699CC';
       }
     });
 
-    contentContainer.appendChild(translateButton);
+    container.appendChild(translateButton);
+  }
+}
+
+function addTranslateButton(reviewElement, reviewText, sourceLang) {
+  let contentContainer;
+  if (reviewElement.classList.contains('js-review')) {
+    contentContainer = reviewElement;
+  } else {
+    contentContainer = reviewElement.querySelector('.js-review');
+  }
+
+  if (contentContainer) {
+    createAndAttachTranslateButton(
+      contentContainer,
+      reviewText,
+      sourceLang,
+      'Translate review'
+    );
   }
 }
 
 function processReviews() {
   // Updated selector to match Letterboxd's current review structure.
   const reviewElements = document.querySelectorAll(
-    'article.production-viewing'
+    'article.production-viewing, section.js-review'
   );
   reviewElements.forEach(processReview);
 }
 
-// Enhanced mutation observer to handle spoiler reveals
-function handleReviewExpansion(mutationsList, observer) {
+function processComments() {
+  const commentElements = document.querySelectorAll('li.comment');
+  commentElements.forEach(processComment);
+}
+
+function processComment(commentElement) {
+  const commentBody = commentElement.querySelector('.comment-body');
+  if (!commentBody) {
+    return;
+  }
+
+  // Don't add a button if one is already there.
+  if (commentBody.querySelector('.translate-button')) {
+    return;
+  }
+
+  const commentText = commentBody.innerHTML.trim();
+  if (!commentText) {
+    return;
+  }
+
+  try {
+    const response = eld.detect(commentText);
+
+    if (response.language !== userMainLanguage) {
+      if (response.getScores()[response.language] > 0.35) {
+        createAndAttachTranslateButton(
+          commentBody,
+          commentText,
+          response.language,
+          'Translate comment'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error processing comment:', error);
+  }
+}
+
+// Enhanced mutation observer to handle spoiler reveals and new comments
+function handleMutations(mutationsList, observer) {
   for (let mutation of mutationsList) {
     if (mutation.type === 'attributes') {
       // Check for hidden attribute changes (spoiler reveals)
@@ -252,13 +331,23 @@ function handleReviewExpansion(mutationsList, observer) {
 
     if (mutation.type === 'childList') {
       mutation.addedNodes.forEach((node) => {
-        if (
-          node.nodeType === Node.ELEMENT_NODE &&
-          node.classList.contains('body-text')
-        ) {
-          const reviewElement = node.closest('article.production-viewing');
-          if (reviewElement) {
-            processReview(reviewElement);
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Handle review expansions
+          if (node.classList.contains('body-text')) {
+            const reviewElement = node.closest('article.production-viewing');
+            if (reviewElement) {
+              processReview(reviewElement);
+            }
+          }
+
+          // Handle new comments
+          if (node.matches && node.matches('li.comment')) {
+            processComment(node);
+          } else if (node.querySelectorAll) {
+            const newComments = node.querySelectorAll('li.comment');
+            if (newComments.length > 0) {
+              newComments.forEach(processComment);
+            }
           }
         }
       });
@@ -267,7 +356,8 @@ function handleReviewExpansion(mutationsList, observer) {
 }
 
 // Update the observer to watch for attribute changes too
-const observer = new MutationObserver(handleReviewExpansion);
+const observer = new MutationObserver(handleMutations);
+
 observer.observe(document.body, {
   childList: true,
   subtree: true,
