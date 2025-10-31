@@ -2,72 +2,11 @@
 <html>
   <head>
     <title>Letterboxd Review Translator</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        width: 500px;
-        padding: 20px;
-        box-sizing: border-box;
-      }
-      label {
-        margin-top: 15px;
-        font-weight: bold;
-      }
-      input,
-      button,
-      select {
-        width: 100%;
-        max-width: 100%;
-        margin-top: 10px;
-        padding: 10px;
-        box-sizing: border-box;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-      }
-      input:focus {
-        border-color: #007bff;
-        outline: none;
-      }
-      button {
-        cursor: pointer;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        transition: background-color 0.3s;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-      .remove-button {
-        background-color: #dc3545;
-      }
-      .remove-button:hover {
-        background-color: #c82333;
-      }
-      .saved-message {
-        color: green;
-        margin-top: 10px;
-        font-weight: bold;
-      }
-      .input-with-icon {
-        position: relative;
-      }
-      .input-with-icon input {
-        padding-right: 40px;
-      }
-      .input-with-icon img {
-        position: absolute;
-        right: 10px;
-        top: 40%;
-        cursor: pointer;
-        width: 20px;
-        height: 20px;
-      }
-    </style>
+    <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <h2>Letterboxd Review Translator</h2>
+
     <label for="targetLang">Select Your Default Language:</label>
     <select id="targetLang">
       <option value="en" selected>English</option>
@@ -106,33 +45,35 @@
       <option value="ka">Georgian</option>
     </select>
 
-    <h2>DeepL API Key</h2>
-    <label for="apiKey"
-      >Enter your DeepL API Key:
-      <a
-        href="https://www.deepl.com/en/pro#developer"
-        target="_blank"
-        rel="noopener noreferrer"
-        style="font-size: small"
-        >(Get free API Key here)</a
-      ></label
-    >
-    <div class="input-with-icon">
-      <input type="password" id="apiKey" placeholder="Enter API Key" />
-      <img
-        id="toggleApiKeyVisibility"
-        src="icons/eye_icon.png"
-        alt="Toggle visibility"
-        style="display: block"
-      />
+    <div class="api-key-section">
+      <h2>DeepL API Key</h2>
+      <label for="apiKey">
+        Enter your DeepL API Key:
+        <a
+          href="https://www.deepl.com/en/pro#developer"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="api-key-link"
+          >(Get free API Key here)</a
+        >
+      </label>
+      <div class="input-with-icon">
+        <input type="password" id="apiKey" placeholder="Enter API Key" />
+        <img
+          id="toggleApiKeyVisibility"
+          src="icons/eye_icon.png"
+          alt="Toggle visibility"
+          title="Toggle API Key visibility"
+        />
+      </div>
+      <div class="button-group">
+        <button id="save">Save</button>
+        <button id="removeApiKey" class="remove-button">Remove API Key</button>
+      </div>
     </div>
-    <button id="save">Save</button>
-    <button id="removeApiKey" class="remove-button">Remove API Key</button>
-    <div
-      id="statusMessage"
-      class="saved-message"
-      style="font-size: small"
-    ></div>
+
+    <div id="statusMessage" class="saved-message"></div>
+
     <script src="popup.js"></script>
   </body>
 </html>

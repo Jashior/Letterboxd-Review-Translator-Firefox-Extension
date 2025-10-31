@@ -1,28 +1,31 @@
-﻿/*
+﻿﻿/*
 Copyright 2023 Nito T.M.
 License https://www.apache.org/licenses/LICENSE-2.0 Apache-2.0
 Author Nito T.M. (https://github.com/nitotm)
 Package npmjs.com/package/eld
 */
 
-import { avgScore } from './avgScore.js'
-// import { ngramsData } from "./ngrams/ngramsM60.js"
+import { avgScore } from './avgScore.js';
 
 export const languageData = {
-  langCodes: {}, langScore: [], ngrams: {}, type: '', avgScore: avgScore
-}
+  langCodes: {},
+  langScore: [],
+  ngrams: {},
+  type: '',
+  avgScore: avgScore,
+};
 
 /**
  * @param {string} file File inside /ngrams/, with ELD ngrams data format
  * @returns {boolean|undefined} true if file was loaded
  */
 export async function loadNgrams(file) {
-  return await import('./ngrams/' + file ).then((module) => {
-    setNgrams(module.ngramsData)
+  return await import('./ngrams/' + file).then((module) => {
+    setNgrams(module.ngramsData);
     if (languageData.type) {
-      return true
+      return true;
     }
-  })
+  });
 }
 // setNgrams(ngramsData) // Used to create minified files with import { ngramsData }
 
@@ -30,10 +33,10 @@ export async function loadNgrams(file) {
  * @param {Object} data
  */
 function setNgrams(data) {
-  languageData.langCodes = data.languages
-  languageData.langScore = Array(Object.keys(data.languages).length).fill(0)
-  languageData.ngrams = data.ngrams
-  languageData.type = data.type
+  languageData.langCodes = data.languages;
+  languageData.langScore = Array(Object.keys(data.languages).length).fill(0);
+  languageData.ngrams = data.ngrams;
+  languageData.type = data.type;
 }
 
 /* ISO 639-1 codes, for the 60 languages set.

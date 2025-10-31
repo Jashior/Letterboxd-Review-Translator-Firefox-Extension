@@ -1,22 +1,22 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "Letterboxd Review Translator",
-  "version": "1.11",
+  "version": "1.12",
   "description": "Translate Letterboxd Reviews that not in your native language",
   "permissions": [
-    "storage"
-  ],
-  "host_permissions": [
-    "https://api-free.deepl.com/*",
-    "*://*.letterboxd.com/*"
+    "storage",
+    "activeTab",
+    "*://*.letterboxd.com/*",
+    "https://api-free.deepl.com/*"
   ],
   "background": {
     "scripts": [
       "src/background.js"
-    ]
+    ],
+    "persistent": false
   },
-  "action": {
-    "default_popup": "/src/popup.html",
+  "browser_action": {
+    "default_popup": "src/popup.html",
     "default_icon": {
       "16": "src/icons/icon.png",
       "48": "src/icons/icon.png",
@@ -24,7 +24,7 @@
     }
   },
   "options_ui": {
-    "page": "/src/options.html",
+    "page": "src/options.html",
     "open_in_tab": true
   },
   "content_scripts": [
@@ -38,20 +38,12 @@
     }
   ],
   "web_accessible_resources": [
-    {
-      "resources": [
-        "src/content.js",
-        "src/l-d/*.js"
-      ],
-      "matches": [
-        "*://*.letterboxd.com/*"
-      ]
-    }
+    "src/content.js",
+    "src/l-d/*.js"
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "reviewtranslatorletterboxd@jashior.com",
-      "strict_min_version": "58.0"
+      "id": "reviewtranslatorletterboxd@jashior.com"
     }
   }
 }

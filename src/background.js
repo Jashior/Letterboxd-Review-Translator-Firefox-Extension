@@ -1,43 +1,119 @@
 // background.js
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "translate") {
-    translateText(message.text, message.sourceLang, message.targetLang)
-      .then((translatedText) => sendResponse({ translatedText }))
-      .catch((error) => sendResponse({ error: error.message }));
+/*
+Background script to handle DeepL API calls
+This script runs in the extension's background context where CORS restrictions don't apply
+*/
 
-    // Return true to indicate that sendResponse will be called asynchronously
-    return true;
-  }
-});
-
-async function translateText(text, sourceLang, targetLang) {
-  // Retrieve API key from storage
-  const { deeplApiKey } = await chrome.storage.local.get("deeplApiKey");
-
-  if (!deeplApiKey) {
-    throw new Error("DeepL API key is not available.");
-  }
-
-  const apiUrl = "https://api-free.deepl.com/v2/translate";
-  const requestPayload = {
-    text: [text],
-    target_lang: targetLang,
-    source_lang: sourceLang || undefined,
-  };
-
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `DeepL-Auth-Key ${deeplApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestPayload),
+// Listen for messages from content scripts
+if (typeof browser !== 'undefined') {
+  // Firefox - onMessage listener can return a Promise
+  browser.runtime.onMessage.addListener(handleMessage);
+} else {
+  // Chrome - onMessage listener uses callback
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    handleMessage(request, sender, sendResponse);
+    return true; // Indicates we'll respond asynchronously
   });
+}
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
+async function handleMessage(request, sender, sendResponse) {
+  if (request.action === 'translate') {
+    try {
+      const translatedText = await translateText(
+        request.text,
+        request.sourceLang,
+        request.targetLang
+      );
+
+      const response = { translatedText };
+
+      if (typeof browser !== 'undefined') {
+        // Firefox - return Promise
+        return Promise.resolve(response);
+      } else {
+        // Chrome - use sendResponse callback
+        if (sendResponse) {
+          sendResponse(response);
+        }
+        return response;
+      }
+    } catch (error) {
+      console.error('Background script translation error:', error);
+      const errorResponse = { error: error.message };
+
+      if (typeof browser !== 'undefined') {
+        // Firefox - return Promise
+        return Promise.resolve(errorResponse);
+      } else {
+        // Chrome - use sendResponse callback
+        if (sendResponse) {
+          sendResponse(errorResponse);
+        }
+        return errorResponse;
+      }
+    }
   }
 
-  const data = await response.json();
-  return data.translations[0].text;
+  async function translateText(text, sourceLang, targetLang) {
+    try {
+      // Get API key from storage
+      const storage =
+        typeof browser !== 'undefined'
+          ? browser.storage.local
+          : chrome.storage.local;
+
+      const data = await new Promise((resolve, reject) => {
+        storage.get(['deeplApiKey'], (result) => {
+          if (
+            chrome.runtime.lastError ||
+            (typeof browser !== 'undefined' && browser.runtime.lastError)
+          ) {
+            reject(chrome.runtime.lastError || browser.runtime.lastError);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+
+      const apiKey = data.deeplApiKey;
+
+      if (!apiKey) {
+        throw new Error(
+          'DeepL API key is not available. Please set it in the extension popup.'
+        );
+      }
+
+      const apiUrl = 'https://api-free.deepl.com/v2/translate';
+      const requestPayload = {
+        text: [text],
+        target_lang: targetLang.toUpperCase(), // DeepL expects uppercase language codes
+        source_lang: sourceLang ? sourceLang.toUpperCase() : undefined,
+        preserve_formatting: true, // Use boolean instead of string
+        tag_handling: 'html',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `DeepL-Auth-Key ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Background.js: API Error Response:', errorText);
+        throw new Error(
+          `HTTP error! Status: ${response.status}, Response: ${errorText}`
+        );
+      }
+
+      const responseData = await response.json();
+      return responseData.translations[0].text;
+    } catch (error) {
+      console.error('Background.js: Error in translateText:', error);
+      throw error;
+    }
+  }
 }
