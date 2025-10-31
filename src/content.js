@@ -59,22 +59,52 @@ let langSubset = [
 ];
 
 export default function () {
+  injectCss();
   initializeUserSettings(() => {
     processReviews();
     processComments();
   });
 }
 
-function startTranslatingAnimation(element) {
-  let dots = '.';
-  element.textContent = 'Translating' + dots;
-  const intervalId = setInterval(() => {
-    dots = dots.length < 3 ? dots + '.' : '.';
-    element.textContent = 'Translating' + dots;
-  }, 300);
-
-  return () => clearInterval(intervalId);
+function injectCss() {
+  const styleId = 'review-translator-styles';
+  if (document.getElementById(styleId)) {
+    return;
+  }
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    .translator-spinner {
+      animation: translator-rotate 2s linear infinite;
+      width: 1em;
+      height: 1em;
+      vertical-align: middle;
+    }
+    .translator-spinner .path {
+      stroke: #6699CC;
+      stroke-linecap: round;
+      animation: translator-dash 1.5s ease-in-out infinite;
+    }
+    @keyframes translator-rotate {
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes translator-dash {
+      0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+      50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+      100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+    }
+    .translator-fade-in {
+      animation: translator-fadeIn 0.5s ease-in-out;
+    }
+    @keyframes translator-fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
 }
+
+
 
 function initializeUserSettings(callback) {
   eld.dynamicLangSubset(langSubset);
@@ -192,24 +222,22 @@ function createAndAttachTranslateButton(
         existingError.remove();
       }
 
-      let stopAnimation;
-      try {
-        // Show loading state
-        stopAnimation = startTranslatingAnimation(translateButton);
-        translateButton.style.cursor = 'default';
-        translateButton.style.color = '#999999';
+      const originalText = translateButton.textContent;
+      translateButton.innerHTML = `<svg class="translator-spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle></svg>`;
+      translateButton.style.cursor = 'default';
 
+      try {
         // Message background script for translation
         const translatedText = await translateText(
           textToTranslate,
           sourceLang,
           userMainLanguage
         );
-        stopAnimation();
 
         // Create a new element to display the translated text
         const translatedElement = document.createElement('div');
         translatedElement.innerHTML = translatedText;
+        translatedElement.className = 'translator-fade-in';
         translatedElement.style.marginTop = '10px';
         translatedElement.style.fontFamily =
           'TiemposTextWeb-Regular,Georgia,serif';
@@ -225,10 +253,9 @@ function createAndAttachTranslateButton(
         // Hide the translate button after translation
         translateButton.style.display = 'none';
       } catch (error) {
-        if (stopAnimation) stopAnimation();
         console.error('Error during translation:', error);
         const errorElement = document.createElement('div');
-        errorElement.className = 'translation-error'; // Add class for easy removal
+        errorElement.className = 'translation-error translator-fade-in'; // Add class for easy removal
         errorElement.textContent = `Failed to translate: ${error.message}`;
         errorElement.style.marginTop = '8px';
         errorElement.style.color = '#CC6666';
@@ -236,7 +263,7 @@ function createAndAttachTranslateButton(
         container.appendChild(errorElement);
 
         // Reset button state
-        translateButton.textContent = buttonText;
+        translateButton.innerHTML = originalText;
         translateButton.style.cursor = 'pointer';
         translateButton.style.color = '#6699CC';
       }

@@ -102,6 +102,11 @@ async function handleMessage(request, sender, sendResponse) {
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error(
+            'Authentication failed. Please check your DeepL API key.'
+          );
+        }
         const errorText = await response.text();
         console.error('Background.js: API Error Response:', errorText);
         throw new Error(
