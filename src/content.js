@@ -128,10 +128,17 @@ function initializeUserSettings(callback) {
       return;
     }
 
-    userMainLanguage = data.targetLang || 'en';
+    userMainLanguage = normalizeLanguage(data.targetLang);
     deeplApiKey = data.deeplApiKey || null;
     callback();
   });
+}
+
+function normalizeLanguage(lang, fallback = 'en') {
+  if (!lang || typeof lang !== 'string') {
+    return fallback;
+  }
+  return lang.toLowerCase().split('-')[0];
 }
 
 // Message passing to background script for API calls
@@ -315,23 +322,33 @@ function processComment(commentElement) {
     return;
   }
 
-  const commentText = commentBody.innerHTML.trim();
-  if (!commentText) {
+  const { html: commentHtml, text: detectionText } =
+    extractCommentContent(commentBody);
+
+  if (!detectionText) {
     return;
   }
 
   try {
-    const response = eld.detect(commentText);
+    const response = eld.detect(detectionText);
+    const rawDetectedLanguage = response.language || '';
+    const detectedLanguage = normalizeLanguage(rawDetectedLanguage, '');
+    const scores = response.getScores();
+    const confidence = scores[response.language] || scores[detectedLanguage] || 0;
+    const isReliable =
+      typeof response.isReliable === 'function' ? response.isReliable() : true;
 
-    if (response.language !== userMainLanguage) {
-      if (response.getScores()[response.language] > 0.35) {
+    if (
+      detectedLanguage &&
+      detectedLanguage !== userMainLanguage &&
+      (isReliable || confidence > 0.6)
+    ) {
         createAndAttachTranslateButton(
           commentBody,
-          commentText,
-          response.language,
+          commentHtml,
+          detectedLanguage,
           'Translate comment'
         );
-      }
     }
   } catch (error) {
     console.error('Error processing comment:', error);
@@ -496,6 +513,27 @@ function extractReviewText(reviewElement) {
   const extractedText = clonedNode.innerHTML.trim();
 
   return extractedText;
+}
+
+function extractCommentContent(commentBody) {
+  const clonedNode = commentBody.cloneNode(true);
+
+  const removableSelectors = [
+    '.translate-button',
+    '.translation-error',
+    '.translator-fade-in',
+  ];
+
+  removableSelectors.forEach((selector) => {
+    clonedNode
+      .querySelectorAll(selector)
+      .forEach((node) => node.parentNode && node.parentNode.removeChild(node));
+  });
+
+  const html = clonedNode.innerHTML.trim();
+  const text = clonedNode.textContent.replace(/\s+/g, ' ').trim();
+
+  return { html, text };
 }
 
 // Enhanced click handler
